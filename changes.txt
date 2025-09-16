@@ -1,5 +1,6 @@
-0.3 
+0.3
 -Added diagonal movement
+-Changed sprite loading from one-by-one initialization to for loop
 
 0.4
 -Diagonal movement updated
