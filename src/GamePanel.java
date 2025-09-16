@@ -31,6 +31,7 @@ public class GamePanel extends JPanel {
 
     // character movement
     public void moveUp() {
+        //map border collision
         if(testMapYPos > 0){
             System.out.println("Border reached");
             if(characterYPos > -20){
@@ -148,6 +149,7 @@ public class GamePanel extends JPanel {
                 rightAnimation[i] = ImageIO.read(new File("sprite\\FELIS\\felis_Right" + (i + 1) + ".png"));
                 sizeCharacterW = downAnimation[i].getWidth();
                 sizeCharacterH = downAnimation[i].getHeight();
+                //center character to gamepanel on start
                 characterXPos = (gamePanelSizeX - sizeCharacterW) / 2;
                 characterYPos = (gamePanelSizeY - sizeCharacterH) / 2;
             } catch (Exception e) {
@@ -161,6 +163,7 @@ public class GamePanel extends JPanel {
 
             sizeTestMapW = testMap.getWidth()*16;
             sizeTestMapH = testMap.getHeight()*16;
+            //center map to gamepanel on start
             testMapXPos = (gamePanelSizeX-sizeTestMapW)/2;
             testMapYPos = (gamePanelSizeY + -sizeTestMapH)/2;
             System.out.println("Map Height: " + sizeTestMapH);
