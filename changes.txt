@@ -1,0 +1,8 @@
+0.3 
+-Added diagonal movement
+
+0.4
+-Diagonal movement updated
+
+0.5 
+-Diagonal movement removed(hirap)
