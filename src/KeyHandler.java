@@ -20,15 +20,14 @@ public class KeyHandler implements KeyListener {
     }
 
     public void update() {
-        if (upIsPressed) {
+        if (upIsPressed)
             panel.moveUp();
-        } else if (downIsPressed) {
+        if (downIsPressed)
             panel.moveDown();
-        } else if (leftIsPressed) {
+        if (leftIsPressed)
             panel.moveLeft();
-        } else if (rightIsPressed) {
+        if (rightIsPressed)
             panel.moveRight();
-        }
 
         panel.repaint();
     }
@@ -37,7 +36,7 @@ public class KeyHandler implements KeyListener {
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
         if (e.isShiftDown())
-            panel.setSpeed(10);
+            panel.setSpeed(8);
         else
             panel.setSpeed(3);
         if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) {

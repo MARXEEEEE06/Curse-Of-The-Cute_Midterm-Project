@@ -18,8 +18,11 @@ public class GamePanel extends JPanel {
     private int frameDelay = 0; // counts frames
     private int frameSpeed = 3; // higher = slower animation
     // map
-    private int gamePanelSizeX = 800;
-    private int gamePanelSizeY = 600;
+    private int tileSize = 32;
+    private int panelRows = 25; //rows of grid
+    private int panelCols = 19; //columns of grid
+    private int gamePanelSizeX = tileSize*panelRows;
+    private int gamePanelSizeY = tileSize*panelCols;
     private int testMapXPos;
     private int testMapYPos;
     int sizeTestMapW;
@@ -32,17 +35,21 @@ public class GamePanel extends JPanel {
     // character movement
     public void moveUp() {
         //map border collision
-        if(testMapYPos > 0){
+        if(testMapYPos > -5){       
             System.out.println("Border reached");
-            if(characterYPos > -20){
+            if(characterYPos > 0){
                 characterYPos -= speed;
             }
         }else{
-            testMapYPos += speed;
+            if(characterYPos < (gamePanelSizeY - sizeCharacterH) / 2 )  
+                testMapYPos += speed;
+            else
             characterYPos -= speed;
         }
         System.out.println("mapX:" + testMapXPos);
         System.out.println("mapY:" + testMapYPos);
+        System.out.println("charX:" + characterXPos);
+        System.out.println("charY:" + characterYPos);
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
@@ -54,17 +61,22 @@ public class GamePanel extends JPanel {
     }
 
     public void moveDown() {
-        if(testMapYPos < -415){
+        if(testMapYPos < -410){
             System.out.println("Border reached");
-            if(characterYPos < -435){
+            if(characterYPos < 480){
                 characterYPos += speed;
             }
         }else{
-            testMapYPos -= speed;
+            if(characterYPos > (gamePanelSizeY - sizeCharacterH) / 2 )  
+                testMapYPos -= speed;
+            else
             characterYPos += speed;
         }
         System.out.println("mapX:" + testMapXPos);
         System.out.println("mapY:" + testMapYPos);
+        System.out.println("charX:" + characterXPos);
+        System.out.println("charY:" + characterYPos);
+
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
@@ -76,13 +88,14 @@ public class GamePanel extends JPanel {
     }
 
     public void moveLeft() {
-        if (testMapXPos > 0) {
+        if (testMapXPos > -5) {
             System.out.println("Border reached");
-            if(characterXPos > -20){
-                characterXPos -= speed;
-            }
+            if(characterXPos > 0)
+            characterXPos -= speed;
         } else {
-            testMapXPos += speed;
+            if(characterXPos < (gamePanelSizeX - sizeCharacterW) / 2 )  
+                testMapXPos += speed;
+            else
             characterXPos -= speed;
         }
 
@@ -101,16 +114,18 @@ public class GamePanel extends JPanel {
     }
 
     public void moveRight() {
-        if (testMapXPos < -224) {
-            if (characterXPos < 700)
-                characterXPos += speed;
+        if (testMapXPos < -220) {
             System.out.println("Border reached");
-            
-        } else {
+            if(characterXPos < gamePanelSizeX)
             characterXPos += speed;
-            testMapXPos -= speed;
+            
+        } else {    
+            if(characterXPos > (gamePanelSizeX - sizeCharacterW) / 2 )  
+                testMapXPos -= speed;
+            else
+            characterXPos += speed;
         }
-
+        
         System.out.println("mapX:" + testMapXPos);
         System.out.println("mapY:" + testMapYPos);
         System.out.println("charX:" + characterXPos);
@@ -183,12 +198,20 @@ public class GamePanel extends JPanel {
             g.drawImage(testMap, testMapXPos, testMapYPos, sizeTestMapW, sizeTestMapH, null);
         }
         if (currentImage != null){
-            g.drawImage(currentImage, characterXPos, characterYPos, (sizeCharacterW * 2), (sizeCharacterH * 2), null);
+            g.drawImage(currentImage, characterXPos, characterYPos, sizeCharacterW, sizeCharacterH, null);
         }
-        g.setColor(Color.RED);
-        g.fillRect(0, 300, 800, 1);
-        g.setColor(Color.RED);
-        g.fillRect(400, 0, 1, 600);
+        for(int x = 0; x < gamePanelSizeX; x += tileSize){
+            g.setColor(Color.red);
+            g.drawLine(x, 0, x, gamePanelSizeY);
+        }
+        for (int y = 0; y <= gamePanelSizeY; y += tileSize){
+            g.drawLine(0, y, gamePanelSizeX, y); // Horizontal lines
+            g.setColor(Color.red);
+        }
+        g.setColor(Color.green);
+        g.drawLine(0, gamePanelSizeY/2, gamePanelSizeX, gamePanelSizeY/2);
+        g.setColor(Color.green);
+        g.drawLine(gamePanelSizeX/2, gamePanelSizeY, gamePanelSizeX/2, 0);
         //top layer
     }
 }
