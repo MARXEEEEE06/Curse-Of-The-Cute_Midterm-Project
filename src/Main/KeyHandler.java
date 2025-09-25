@@ -3,7 +3,7 @@ import java.awt.event.KeyListener;
 import javax.swing.Timer;
 
 public class KeyHandler implements KeyListener {
-    private GamePanel panel;
+    private final GamePanel panel;
     boolean upIsPressed = false;
     boolean downIsPressed = false;
     boolean leftIsPressed = false;
@@ -11,8 +11,10 @@ public class KeyHandler implements KeyListener {
     Timer gameTimer;
 
     public void startGameLoop() {
-        gameTimer = new Timer(20, e -> update());
+        gameTimer = new Timer(30, _ -> update());
         gameTimer.start();
+        panel.entitiesCollision();
+
     }
 
     public KeyHandler(GamePanel panel) {
@@ -28,33 +30,36 @@ public class KeyHandler implements KeyListener {
             panel.moveLeft();
         if (rightIsPressed)
             panel.moveRight();
+        if (!upIsPressed && !downIsPressed && !leftIsPressed && !rightIsPressed)
+            // panel.idle();
 
-        panel.repaint();
+            panel.repaint();
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
-        if (e.isShiftDown())
-            panel.setSpeed(8);
+        System.out.println("PlayerX: " + panel.playerX);
+        System.out.println("PlayerY: " + panel.playerY);
+
+        if (e.isShiftDown()){
+            panel.setSpeed(10);
+        }
         else
             panel.setSpeed(3);
         if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) {
             upIsPressed = true;
-            System.out.println("Up key: " + upIsPressed);
         }
         if (code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) {
             downIsPressed = true;
-            System.out.println("Down key: " + downIsPressed);
         }
         if (code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) {
             leftIsPressed = true;
-            System.out.println("Left key: " + leftIsPressed);
         }
         if (code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) {
             rightIsPressed = true;
-            System.out.println("Right key: " + rightIsPressed);
         }
+
     }
 
     @Override
@@ -62,19 +67,15 @@ public class KeyHandler implements KeyListener {
         int code = e.getKeyCode();
         if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) {
             upIsPressed = false;
-            System.out.println("Up key: " + upIsPressed);
         }
         if (code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) {
             downIsPressed = false;
-            System.out.println("Down key: " + downIsPressed);
         }
         if (code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) {
             leftIsPressed = false;
-            System.out.println("Left key: " + leftIsPressed);
         }
         if (code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) {
             rightIsPressed = false;
-            System.out.println("Right key: " + rightIsPressed);
         }
     }
 

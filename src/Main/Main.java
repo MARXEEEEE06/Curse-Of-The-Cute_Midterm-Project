@@ -1,7 +1,7 @@
 import javax.swing.JFrame;
 
-public class Main{
-    public static void main(String[] args){
+public class Main {
+    public static void main(String[] args) {
         JFrame frame = new JFrame("Curse of the Cute");
         GamePanel gamePanel = new GamePanel();
         frame.add(gamePanel);
