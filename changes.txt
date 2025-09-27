@@ -11,3 +11,14 @@
 0.6
 -Improved border collision
 -Game now waits for character to center before moving map when coming from border
+
+0.7
+-Reorganized files directory
+-Added tile system
+-Added object collisions
+-Restuctured map system
+
+0.8
+-Removed txt file grid system
+-Replaced with for loops for drawing map tiles
+-Small reorganization of files and sprites

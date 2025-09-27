@@ -3,7 +3,7 @@ import java.awt.event.KeyListener;
 import javax.swing.Timer;
 
 public class KeyHandler implements KeyListener {
-    private final GamePanel panel;
+    private final GamePanel gp;
     boolean upIsPressed = false;
     boolean downIsPressed = false;
     boolean leftIsPressed = false;
@@ -11,53 +11,47 @@ public class KeyHandler implements KeyListener {
     Timer gameTimer;
 
     public void startGameLoop() {
-        gameTimer = new Timer(30, _ -> update());
+        gameTimer = new Timer(20, _ -> update());
         gameTimer.start();
-        panel.entitiesCollision();
-
     }
 
-    public KeyHandler(GamePanel panel) {
-        this.panel = panel;
+    public KeyHandler(GamePanel gp) {
+        this.gp = gp;
     }
 
     public void update() {
         if (upIsPressed)
-            panel.moveUp();
+            gp.moveUp();
         if (downIsPressed)
-            panel.moveDown();
+            gp.moveDown();
         if (leftIsPressed)
-            panel.moveLeft();
+            gp.moveLeft();
         if (rightIsPressed)
-            panel.moveRight();
+            gp.moveRight();
         if (!upIsPressed && !downIsPressed && !leftIsPressed && !rightIsPressed)
-            // panel.idle();
+            // player.idle();
 
-            panel.repaint();
+            gp.repaint();
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
-        System.out.println("PlayerX: " + panel.playerX);
-        System.out.println("PlayerY: " + panel.playerY);
+        System.out.println("MapX: " + gp.mapX);
+        System.out.println("Map: " + gp.mapY);
 
         if (e.isShiftDown()){
-            panel.setSpeed(10);
+            gp.setSpeed(20);
         }
         else
-            panel.setSpeed(3);
-        if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) {
-            upIsPressed = true;
-        }
-        if (code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) {
-            downIsPressed = true;
-        }
-        if (code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) {
-            leftIsPressed = true;
-        }
-        if (code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) {
-            rightIsPressed = true;
+            gp.setSpeed(3);
+        switch (code) {
+            case KeyEvent.VK_W, KeyEvent.VK_UP -> upIsPressed = true;
+            case KeyEvent.VK_S, KeyEvent.VK_DOWN -> downIsPressed = true;
+            case KeyEvent.VK_A, KeyEvent.VK_LEFT -> leftIsPressed = true;
+            case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> rightIsPressed = true;
+            default -> {
+            }
         }
 
     }

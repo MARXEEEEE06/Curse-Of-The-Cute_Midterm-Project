@@ -1,22 +1,16 @@
 import java.awt.*;
 import java.awt.image.*;
-import java.io.*;
-import javax.imageio.ImageIO;
 import javax.swing.*;
 
 public class GamePanel extends JPanel {
-    // movement
-    private int speed = 5;
-    private int whatFrame = 0;
-    private final int frameSpeed = 3; // higher = slower animation
-    private int frameDelay = 0; // counts frames for delay
-    public int playerX = 0, playerY = 0;
+    PlayerStatus ps = new PlayerStatus(this);
+    public int speed = 5;
+    public int whatFrame = 0;
+    public final int frameSpeed = 3; // higher = slower animation
+    public int frameDelay = 0; // counts frames for delay
+    public int playerX = 0;//((tileRow/tileSize) - playerSizeW) / 2;
+    public int playerY = 0;//((tileRow/tileSize) - playerSizeH) / 2;
     public int playerPX = playerX, playerPY = playerY;
-    private BufferedImage currentImage;
-    private final BufferedImage[] upAnimation = new BufferedImage[4];
-    private final BufferedImage[] downAnimation = new BufferedImage[4];
-    private final BufferedImage[] leftAnimation = new BufferedImage[4];
-    private final BufferedImage[] rightAnimation = new BufferedImage[4];
     // tile
     public int tileRow = 50; // rows of grid
     public int tileCol = 50; // columns of grid
@@ -25,15 +19,15 @@ public class GamePanel extends JPanel {
     tilesManager tiles = new tilesManager(this);
     // map
     public final int tileSize = 32;
-    private final int gamePanelSizeX = 800;
-    private final int gamePanelSizeY = 600;
+    public final int gamePanelSizeX = 800;
+    public final int gamePanelSizeY = 600;
+    public int mapX = playerX*2;
+    public int mapY = playerY*2;
     @SuppressWarnings("unused")
     private final int scaleMultiplier = 2;
     public BufferedImage grassTile;
     public BufferedImage tree1;
-    // player
-    int playerSizeW;
-    int playerSizeH;
+    // collisions
     Collisions playerCollision;
     Collisions tree1Collision;
     @SuppressWarnings("unused")
@@ -42,7 +36,7 @@ public class GamePanel extends JPanel {
     Collisions structureCollision;
 
     public void entitiesCollision() {
-        playerCollision = new Collisions(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+        playerCollision = new Collisions(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         tree1Collision = new Collisions(-64, -64, tileSize, tileSize);
         //rockCollision = new Collisions(0, 0, tileSize, tileSize);
         //structureCollision = new Collisions(0, 0, tileSize * 2, tileSize * 2);
@@ -50,13 +44,14 @@ public class GamePanel extends JPanel {
 
     public GamePanel() {
         loadSprites();
-
         KeyHandler keyH = new KeyHandler(this);
         this.setFocusable(true);
         this.addKeyListener(keyH);
         this.setPreferredSize(new Dimension(gamePanelSizeX, gamePanelSizeY));
         this.setBackground(Color.gray);
         keyH.startGameLoop();
+        playerX = (gamePanelSizeX-ps.playerSizeW)/2;
+        playerY = (gamePanelSizeY-ps.playerSizeH)/2;
     };
 
     // character movement
@@ -64,17 +59,17 @@ public class GamePanel extends JPanel {
         // map border collision
         if (playerCollision.intersects(tree1Collision)) {
             System.out.println("Collision Detected");
-            playerY = playerPY;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapY = playerPY;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
-            playerY -= speed;
-            playerPY = playerY + 10;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapY -= speed;
+            playerPY = mapY + 10;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         }
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
-            currentImage = upAnimation[whatFrame];
+            ps.currentImage = ps.upAnimation[whatFrame];
             frameDelay = 0;
         }
 
@@ -84,18 +79,18 @@ public class GamePanel extends JPanel {
     public void moveDown() {
         if (playerCollision.intersects(tree1Collision)) {
             System.out.println("Collision Detected");
-            playerY = playerPY;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapY = playerPY;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
-            playerY += speed;
-            playerPY = playerY - 10;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapY += speed;
+            playerPY = mapY - 10;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         }
 
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
-            currentImage = downAnimation[whatFrame];
+            ps.currentImage = ps.downAnimation[whatFrame];
             frameDelay = 0;
         }
 
@@ -105,17 +100,17 @@ public class GamePanel extends JPanel {
     public void moveLeft() {
         if (playerCollision.intersects(tree1Collision)) {
             System.out.println("Collision Detected");
-            playerX = playerPX;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapX = playerPX;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
-            playerX -= speed;
-            playerPX = playerX + 10;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapX -= speed;
+            playerPX = mapX + 10;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         }
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
-            currentImage = leftAnimation[whatFrame];
+            ps.currentImage = ps.leftAnimation[whatFrame];
             frameDelay = 0;
         }
         repaint();
@@ -124,17 +119,17 @@ public class GamePanel extends JPanel {
     public void moveRight() {
         if (playerCollision.intersects(tree1Collision)) {
             System.out.println("Collision Detected");
-            playerX = playerPX;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapX = playerPX;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
-            playerX += speed;
-            playerPX = playerX - 10;
-            playerCollision.setBounds(playerX + 15, playerY, playerSizeW / 2, playerSizeH);
+            mapX += speed;
+            playerPX = mapX - 10;
+            playerCollision.setBounds(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH);
         }
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
-            currentImage = rightAnimation[whatFrame];
+            ps.currentImage = ps.rightAnimation[whatFrame];
             frameDelay = 0;
         }
         repaint();
@@ -147,34 +142,15 @@ public class GamePanel extends JPanel {
     // sprite
     @SuppressWarnings({ "CallToPrintStackTrace", "UseSpecificCatch" })
     private void loadSprites() {
-        for (int i = 0; i < 4; i++) {
-            try {
-                currentImage = ImageIO.read(new File("res\\Entities\\Player\\felis_Down1.png"));
-                upAnimation[i] = ImageIO.read(new File("res\\Entities\\Player\\felis_Up" + (i + 1) + ".png"));
-                downAnimation[i] = ImageIO.read(new File("res\\Entities\\Player\\felis_Down" + (i + 1) + ".png"));
-                leftAnimation[i] = ImageIO.read(new File("res\\Entities\\Player\\felis_Left" + (i + 1) + ".png"));
-                rightAnimation[i] = ImageIO.read(new File("res\\Entities\\Player\\felis_Right" + (i + 1) + ".png"));
-                playerSizeW = downAnimation[i].getWidth();
-                playerSizeH = downAnimation[i].getHeight();
-                // center character to gamepanel on start
-                // playerX = (gamePanelSizeX - playerSizeW) / 2;
-                // playerY = (gamePanelSizeY - playerSizeH) / 2;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        System.out.println("playerSizeW: " + playerSizeW);
-        System.out.println("playerSizeH: " + playerSizeH);
-        System.out.println("PlayerX: " + playerX);
-        System.out.println("PLayerY: " + playerY);
+        System.out.println("ps.playerSizeW: " + ps.playerSizeW);
+        System.out.println("ps.playerSizeH: " + ps.playerSizeH);
+        System.out.println("playerX: " + playerX);
+        System.out.println("playerY: " + playerY);
         try {
-            // sizeTestMapW = testMap.getWidth()*2;
-            // sizeTestMapH = testMap.getHeight()*2;
-            // center map to gamepanel on start
-            // testMapXPos = (gamePanelSizeX-sizeTestMapW)/2;
-            // testMapYPos = (gamePanelSizeY + -sizeTestMapH)/2;
-            System.out.println("Map Height: " + tileRow * tileSize);
             System.out.println("Map Width: " + tileCol * tileSize);
+            System.out.println("Map Height: " + tileRow * tileSize);
+            System.out.println("MapX: " + mapX);
+            System.out.println("MapY: " + mapY);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -183,47 +159,32 @@ public class GamePanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Graphics2D g2 = (Graphics2D) g;
-        // bottom layer
-        // if (testMap != null){
-        // g.drawImage(testMap, testMapXPos, testMapYPos, sizeTestMapW, sizeTestMapH,
-        // null);
+        tiles.draw(g);
+        ps.draw(g);
+        ////gridLines
+        // for (int x = 0; x < (tileRow * tileSize); x += tileSize) {
+        //     g.setColor(Color.red); // Vertical lines
+        //     g.drawLine(x - mapX, 0 - mapY, x - mapX, (tileCol * tileSize) - mapY);
         // }
-        // fill map with grass tiles
-        // for (int i = 0; i < tileRow; i++) {
-        // for (int j = 0; j < tileCol; j++) {
-        // g.drawImage(grassTile, (i * 32)-playerX, (j * 32)-playerY, tileSize,
-        // tileSize, null);
-        // if (i == 4 && j == 5) {
-        // tree1Collision.setBounds((i*tileSize)-playerX, (j)-playerY, (tileSize/2)+12,
-        // tileSize/2);
-        // g.setColor(Color.RED);
-        // g.drawRect(tree1Collision.x, tree1Collision.y,
-        // tree1Collision.width,tree1Collision.height);
-        // g.drawImage(tree1, (i * 32)-playerX, j-playerY, tileSize, tileSize * 2,
-        // null);
+        // for (int y = 0; y <= (tileCol * tileSize); y += tileSize) {
+        //     g.setColor(Color.red);// Horizontal lines
+        //     g.drawLine(0 - mapX, y - mapY, (tileCol * tileSize) - mapX, y - mapY); 
         // }
+        // g.setColor(Color.green);
+        // g.drawLine(0, gamePanelSizeY / 2, gamePanelSizeX, gamePanelSizeY / 2);
+        // g.setColor(Color.green);
+        // g.drawLine(gamePanelSizeX / 2, gamePanelSizeY, gamePanelSizeX / 2, 0);
+
+        // //grid coordinates
+        // g.setColor(Color.white);
+        // for (int row = 0; row < tileCol; row++) {
+        //     for (int col = 0; col < tileRow; col++) {
+        //         int drawX = (col * tileSize) - mapX;
+        //         int drawY = (row * tileSize) - mapY + 12;
+
+        //         g.setColor(Color.white);
+        //         g.drawString(col+","+row, drawX, drawY);
+        //     }
         // }
-        // }
-        tiles.draw(g2);
-        // character
-        if (currentImage != null) {
-            g.setColor(Color.RED);
-            g.drawRect(playerCollision.x, playerCollision.y, playerCollision.width, playerCollision.height);
-            g.drawImage(currentImage, playerX, playerY, playerSizeW, playerSizeH, null);
-        }
-        for (int x = 0; x < (tileRow * tileSize); x += tileSize) {
-            g.setColor(Color.red); // Vertical lines
-            g.drawLine(x - playerX, 0 - playerY, x - playerX, (tileCol * tileSize) - playerY);
-        }
-        for (int y = 0; y <= (tileCol * tileSize); y += tileSize) {
-            g.drawLine(0 - playerX, y - playerY, (tileCol * tileSize) - playerX, y - playerY); // Horizontal lines
-            g.setColor(Color.red);
-        }
-        g.setColor(Color.green);
-        g.drawLine(0, gamePanelSizeY / 2, gamePanelSizeX, gamePanelSizeY / 2);
-        g.setColor(Color.green);
-        g.drawLine(gamePanelSizeX / 2, gamePanelSizeY, gamePanelSizeX / 2, 0);
-        // top layer
     }
 }
