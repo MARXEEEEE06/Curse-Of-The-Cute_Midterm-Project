@@ -38,10 +38,12 @@ public class KeyHandler implements KeyListener {
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
         System.out.println("MapX: " + gp.mapX);
-        System.out.println("Map: " + gp.mapY);
+        System.out.println("MapY: " + gp.mapY);
+        System.out.println("PlayerX: " + gp.playerX);
+        System.out.println("PlayerY: " + gp.playerY);
 
         if (e.isShiftDown()){
-            gp.setSpeed(20);
+            gp.setSpeed(10);
         }
         else
             gp.setSpeed(3);
@@ -53,7 +55,6 @@ public class KeyHandler implements KeyListener {
             default -> {
             }
         }
-
     }
 
     @Override
