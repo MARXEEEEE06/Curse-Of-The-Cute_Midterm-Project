@@ -22,13 +22,13 @@ public class KeyHandler implements KeyListener {
     public void update() {
         if (upIsPressed)
             gp.moveUp();
-        if (downIsPressed)
+        else if (downIsPressed)
             gp.moveDown();
-        if (leftIsPressed)
+        else if (leftIsPressed)
             gp.moveLeft();
-        if (rightIsPressed)
+        else if (rightIsPressed)
             gp.moveRight();
-        if (!upIsPressed && !downIsPressed && !leftIsPressed && !rightIsPressed)
+        else if (!upIsPressed && !downIsPressed && !leftIsPressed && !rightIsPressed)
             // player.idle();
 
             gp.repaint();

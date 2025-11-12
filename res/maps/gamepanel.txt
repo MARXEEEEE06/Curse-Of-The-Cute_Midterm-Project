@@ -27,7 +27,7 @@ public class GamePanel extends JPanel {
     public int tileCol = 50; // columns of grid
     public int baseLayerGrid[][] = new int[tileRow][tileCol];
     public int objectLayerGrid[][] = new int[tileRow][tileCol];
-    TileManager tiles = new TileManager(this);
+    tilesManager tiles = new tilesManager(this);
     // collisions
     String playerDirection = "";
     Collisions playerCollision;
@@ -37,22 +37,10 @@ public class GamePanel extends JPanel {
     Collisions structureCollision;
 
     public void entitiesCollision() {
-        playerCollision = new Collisions(playerX, playerY, tileSize/2, tileSize/2);
-        if (playerDirection == "up") {
-            playerCollision = new Collisions(playerX+23, playerY-tileSize/3, tileSize/2, tileSize/2);
-        }
-        else if (playerDirection == "down") {
-            playerCollision = new Collisions(playerX+23, playerY+tileSize+20, tileSize/2, tileSize/2);
-        }
-        else if (playerDirection == "left") {
-            playerCollision = new Collisions(playerX, playerY+23, tileSize/2, tileSize/2);
-        }
-        else if (playerDirection == "right") {
-            playerCollision = new Collisions(playerX+tileSize+10, playerY+23, tileSize/2, tileSize/2);
-        }
-        if(tree1Collision == null){
-            tree1Collision = new Collisions(playerX, playerY, tileSize, tileSize);
-        }
+        // playerCollision = new Collisions(playerX + 15, playerY, ps.playerSizeW / 2, ps.playerSizeH/2);
+        playerCollision = new Collisions(playerX, playerY, ps.playerSizeW, ps.playerSizeH);
+        
+        tree1Collision = new Collisions(-64, -64, tileSize, tileSize);
         borderCollision = new Collisions(0, 0, 0, 0);
         //rockCollision = new Collisions(0, 0, tileSize, tileSize);
         //structureCollision = new Collisions(0, 0, tileSize * 2, tileSize * 2);
@@ -68,39 +56,38 @@ public class GamePanel extends JPanel {
         keyH.startGameLoop();
         playerX = (gamePanelSizeX-ps.playerSizeW)/2;
         playerY = (gamePanelSizeY-ps.playerSizeH)/2;
-        // If the map provided a spawn point, center the camera on that spawn
-        if (tiles != null && tiles.hasSpawn) {
-            mapX = tiles.spawnX * TileManager.SCALE - (gamePanelSizeX / 2);
-            mapY = tiles.spawnY * TileManager.SCALE - (gamePanelSizeY / 2);
-        }
     };
 
     // character movement
     public void moveUp() {
+        // map border collision
         playerDirection = "up";
-        // check collision against all map collision rectangles
-        // convert map coordinates to screen coordinates for comparison, scaled by TileManager.SCALE
-        boolean colliding = false;
-        for (Rectangle mapCollision : tiles.getMapCollisions()) {
-            Rectangle screenCollision = new Rectangle(
-                (mapCollision.x * TileManager.SCALE) - mapX,
-                (mapCollision.y * TileManager.SCALE) - mapY,
-                mapCollision.width * TileManager.SCALE,
-                mapCollision.height * TileManager.SCALE
-            );
-            if (playerCollision.intersects(screenCollision)) {
-                colliding = true;
-                break;
+        int alphaThreshold = 5;
+        Rectangle inter = ps.bbox.intersection(tree1Collision); //| ps.bbox.intersection(borderCollision);
+        if (inter.isEmpty()) {mapY -= speed;}
+        else{
+            int startAX = inter.x - ps.bbox.x;
+            int startAY = inter.y - ps.bbox.y;
+            int startBX = inter.x - tree1Collision.x;
+            int startBY = inter.y - tree1Collision.y;
+
+            for (int y = 0; y < inter.height; y++) {
+                for (int x = 0; x < inter.width; x++) {
+                    int rgbA = ps.currentImage.getRGB(startAX + x, startAY + y);
+                    int rgbB = tiles.tree1.getRGB(startBX + x, startBY + y);
+                    int alphaA = (rgbA >>> 24) & 0xff;
+                    int alphaB = (rgbB >>> 24) & 0xff;
+                    if (alphaA > alphaThreshold && alphaB > alphaThreshold) {
+                        System.out.println("Collision Detected");
+                    }
+                }
             }
         }
-        
-        if (colliding) {
-            System.out.println("Collision Detected");
-            playerCollision.setBounds(playerXCollision, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
-        } else {
-            mapY -= speed;
-            playerCollision.setBounds(playerXCollision, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
-        }
+//         if (ps.bbox.intersects(tree1Collision) || ps.bbox.intersects(borderCollision)) {
+//             System.out.println("Collision Detected");
+//         } else {
+// a            mapY -= speed;
+//         }
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
@@ -113,28 +100,10 @@ public class GamePanel extends JPanel {
 
     public void moveDown() {
         playerDirection = "down";
-        // check collision against all map collision rectangles
-        // convert map coordinates to screen coordinates for comparison, scaled by TileManager.SCALE
-        boolean colliding = false;
-        for (Rectangle mapCollision : tiles.getMapCollisions()) {
-            Rectangle screenCollision = new Rectangle(
-                (mapCollision.x * TileManager.SCALE) - mapX,
-                (mapCollision.y * TileManager.SCALE) - mapY,
-                mapCollision.width * TileManager.SCALE,
-                mapCollision.height * TileManager.SCALE
-            );
-            if (playerCollision.intersects(screenCollision)) {
-                colliding = true;
-                break;
-            }
-        }
-        
-        if (colliding) {
+        if (playerCollision.intersects(tree1Collision) || playerCollision.intersects(borderCollision)) {
             System.out.println("Collision Detected");
-            playerCollision.setBounds(playerXCollision + 15, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
             mapY += speed;
-            playerCollision.setBounds(playerXCollision + 15, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
         }
 
         frameDelay++;
@@ -149,28 +118,10 @@ public class GamePanel extends JPanel {
 
     public void moveLeft() {
         playerDirection = "left";
-        // check collision against all map collision rectangles
-        // convert map coordinates to screen coordinates for comparison, scaled by TileManager.SCALE
-        boolean colliding = false;
-        for (Rectangle mapCollision : tiles.getMapCollisions()) {
-            Rectangle screenCollision = new Rectangle(
-                (mapCollision.x * TileManager.SCALE) - mapX,
-                (mapCollision.y * TileManager.SCALE) - mapY,
-                mapCollision.width * TileManager.SCALE,
-                mapCollision.height * TileManager.SCALE
-            );
-            if (playerCollision.intersects(screenCollision)) {
-                colliding = true;
-                break;
-            }
-        }
-        
-        if (colliding) {
+        if (playerCollision.intersects(tree1Collision) || playerCollision.intersects(borderCollision)) {
             System.out.println("Collision Detected");
-            playerCollision.setBounds(playerXCollision + 15, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
             mapX -= speed;
-            playerCollision.setBounds(playerXCollision + 15, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
         }
         frameDelay++;
         if (frameDelay >= frameSpeed) {
@@ -183,28 +134,10 @@ public class GamePanel extends JPanel {
 
     public void moveRight() {
         playerDirection = "right";
-        // check collision against all map collision rectangles
-        // convert map coordinates to screen coordinates for comparison, scaled by TileManager.SCALE
-        boolean colliding = false;
-        for (Rectangle mapCollision : tiles.getMapCollisions()) {
-            Rectangle screenCollision = new Rectangle(
-                (mapCollision.x * TileManager.SCALE) - mapX,
-                (mapCollision.y * TileManager.SCALE) - mapY,
-                mapCollision.width * TileManager.SCALE,
-                mapCollision.height * TileManager.SCALE
-            );
-            if (playerCollision.intersects(screenCollision)) {
-                colliding = true;
-                break;
-            }
-        }
-        
-        if (colliding) {
+        if (playerCollision.intersects(tree1Collision)) {
             System.out.println("Collision Detected");
-            playerCollision.setBounds(playerXCollision + 15, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
         } else {
             mapX += speed;
-            playerCollision.setBounds(playerXCollision + 15, playerYCollision, ps.playerSizeW / 2, ps.playerSizeH);
         }
         frameDelay++;
         if (frameDelay >= frameSpeed) {
@@ -220,6 +153,7 @@ public class GamePanel extends JPanel {
     }
 
     // sprite
+    @SuppressWarnings({ "CallToPrintStackTrace", "UseSpecificCatch" })
     private void loadSprites() {
         System.out.println("playerSizeW: " + ps.playerSizeW);
         System.out.println("playerSizeH: " + ps.playerSizeH);
