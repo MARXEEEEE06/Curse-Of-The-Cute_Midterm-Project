@@ -1,40 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.11.2" name="tileset1" tilewidth="32" tileheight="32" tilecount="256" columns="16">
  <image source="tileset1.png" width="512" height="512"/>
- <tile id="0" type="treeGreen">
-  <objectgroup draworder="index" id="2">
-   <object id="1" x="8.09091" y="25.4545" width="16.1818" height="6.54545"/>
-  </objectgroup>
- </tile>
+ <tile id="0" type="treeGreen"/>
  <tile id="1" type="treeBrown"/>
  <tile id="2" type="treeBanana"/>
  <tile id="3" type="treeBanana"/>
  <tile id="4" type="treeDead"/>
- <tile id="16" type="treeGreen">
-  <objectgroup draworder="index" id="2">
-   <object id="1" type="treerCollision" x="6.09091" y="0" width="20.5455" height="4.63636"/>
-  </objectgroup>
- </tile>
- <tile id="17" type="treeBrown">
-  <objectgroup draworder="index" id="2">
-   <object id="1" x="6.36364" y="0" width="20.1818" height="5.09091"/>
-  </objectgroup>
- </tile>
- <tile id="18" type="treeBanana">
-  <objectgroup draworder="index" id="2">
-   <object id="1" type="treerCollision" x="27.9091" y="0" width="4.09091" height="17.3636"/>
-  </objectgroup>
- </tile>
- <tile id="19" type="treeBanana">
-  <objectgroup draworder="index" id="2">
-   <object id="1" x="0" y="0" width="4.09091" height="13.4545"/>
-  </objectgroup>
- </tile>
- <tile id="20" type="treeDead">
-  <objectgroup draworder="index" id="2">
-   <object id="1" x="13.9091" y="0" width="5.54545" height="16.8182"/>
-  </objectgroup>
- </tile>
+ <tile id="16" type="treeGreen"/>
+ <tile id="17" type="treeBrown"/>
+ <tile id="18" type="treeBanana"/>
+ <tile id="19" type="treeBanana"/>
+ <tile id="20" type="treeDead"/>
  <tile id="48" type="bushGreen"/>
  <tile id="49" type="bushBrown"/>
  <tile id="64" type="pebbles1"/>
@@ -44,26 +20,10 @@
  <tile id="80" type="grassGreen"/>
  <tile id="81" type="grassBrown"/>
  <tile id="82" type="rockBase"/>
- <tile id="96" type="rock">
-  <objectgroup draworder="index" id="2">
-   <object id="1" type="boulderCollision" x="17" y="17.9091" width="15" height="14.0909"/>
-  </objectgroup>
- </tile>
- <tile id="97" type="rock">
-  <objectgroup draworder="index" id="2">
-   <object id="1" type="boulderCollision" x="0" y="16.1818" width="16.0909" height="15.8182"/>
-  </objectgroup>
- </tile>
- <tile id="112" type="rock">
-  <objectgroup draworder="index" id="2">
-   <object id="1" type="boulderCollision" x="15.0909" y="0" width="16.9091" height="12.4545"/>
-  </objectgroup>
- </tile>
- <tile id="113" type="rock">
-  <objectgroup draworder="index" id="2">
-   <object id="1" type="boulderCollision" x="0" y="0" width="19.5455" height="13.0909"/>
-  </objectgroup>
- </tile>
+ <tile id="96" type="rock"/>
+ <tile id="97" type="rock"/>
+ <tile id="112" type="rock"/>
+ <tile id="113" type="rock"/>
  <wangsets>
   <wangset name="grassPath" type="corner" tile="-1">
    <wangcolor name="" color="#ff0000" tile="-1" probability="1"/>

@@ -1,10 +1,13 @@
 import java.awt.Graphics;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -14,39 +17,56 @@ import org.w3c.dom.NodeList;
 
 public final class TileManager {
     GamePanel gp;
+    public static final int SCALE = 2;
+
     // TMX / tileset data
     BufferedImage tilesetImage;
     int tilesetTileWidth;
     int tilesetTileHeight;
     int tilesetColumns;
     int tilesetFirstGid = 1;
-    
-    // scale factor for rendering (2 = 2x size)
-    public static final int SCALE = 2;
 
     // layers: each layer is int[height][width] with gids
     List<int[][]> layers = new ArrayList<>();
     List<String> layerNames = new ArrayList<>();
 
-    // collision rectangles in map pixel coordinates (not adjusted by gp.mapX/Y)
+    // collision rectangles in map pixel coordinates
     List<Rectangle> mapCollisions = new ArrayList<>();
 
-    // optional spawn point from map (map pixel coordinates)
+    // spawn data
     public int spawnX = -1;
     public int spawnY = -1;
     public boolean hasSpawn = false;
+    Map<String, Point> namedSpawns = new HashMap<>();
+    List<SpawnPoint> spawnPoints = new ArrayList<>();
 
-    // fallback image used if TMX fails to load
+    // fallback image
     BufferedImage fallbackGrass;
+
+    public static class SpawnPoint {
+        public final String name;
+        public final String type;
+        public final String clazz;
+        public final int x;
+        public final int y;
+        public final Map<String,String> props;
+
+        public SpawnPoint(String name, String type, String clazz, int x, int y, Map<String,String> props) {
+            this.name = name;
+            this.type = type;
+            this.clazz = clazz;
+            this.x = x;
+            this.y = y;
+            this.props = props;
+        }
+    }
 
     public TileManager(GamePanel gp) {
         this.gp = gp;
-        // try several common TMX paths first, then scan res/maps for any .tmx file
         boolean loaded = false;
         String[] candidates = new String[] {
-            "res\\maps\\tiles\\map.tmx",
-            "res\\maps\\map.tmx",
             "res\\maps\\forest.tmx",
+            "res\\maps\\map.tmx",
             "res\\maps\\tileset.tmx"
         };
         for (String p : candidates) {
@@ -63,24 +83,17 @@ public final class TileManager {
                 }
             }
         }
-        if (!loaded) {
-            loadTileSprite();
-        }
+        if (!loaded) loadTileSprite();
     }
 
     public void loadTileSprite() {
         try {
             fallbackGrass = ImageIO.read(new File("res\\maps\\tiles\\grass1.png"));
         } catch (IOException e) {
-            // nothing critical; keep null
             e.printStackTrace();
         }
     }
 
-    /**
-     * Load a TMX map. Supports simple embedded tileset and CSV-encoded layer data.
-     * Returns true if load succeeds.
-     */
     public boolean loadMap(String tmxPath) {
         try {
             File tmxFile = new File(tmxPath);
@@ -91,15 +104,14 @@ public final class TileManager {
             Document doc = dBuilder.parse(tmxFile);
             doc.getDocumentElement().normalize();
 
-            // read tileset (first one). Handle external TSX referenced by "source"
+            // read tileset
             NodeList tilesetNodes = doc.getElementsByTagName("tileset");
             if (tilesetNodes.getLength() == 0) return false;
             Element tilesetEl = (Element) tilesetNodes.item(0);
 
-            Element tileset = tilesetEl; // may be replaced if external
-            File tilesetBaseFile = tmxFile; // used to resolve relative image path
+            Element tileset = tilesetEl;
+            File tilesetBaseFile = tmxFile;
             if (tilesetEl.hasAttribute("source") && !tilesetEl.getAttribute("source").isEmpty()) {
-                // external TSX
                 String tsxSrc = tilesetEl.getAttribute("source");
                 File tsxFile = new File(tmxFile.getParentFile(), tsxSrc);
                 if (!tsxFile.exists()) return false;
@@ -109,7 +121,6 @@ public final class TileManager {
                 if (ts.getLength() == 0) return false;
                 tileset = (Element) ts.item(0);
                 tilesetBaseFile = tsxFile;
-                // firstgid is defined in the original tileset element in TMX
                 String firstGidStr = tilesetEl.getAttribute("firstgid");
                 if (firstGidStr != null && !firstGidStr.isEmpty()) tilesetFirstGid = Integer.parseInt(firstGidStr);
             } else {
@@ -122,12 +133,11 @@ public final class TileManager {
             tilesetTileWidth = Integer.parseInt(tileWidthStr);
             tilesetTileHeight = Integer.parseInt(tileHeightStr);
 
-            // image
+            // load tileset image
             NodeList imageNodes = tileset.getElementsByTagName("image");
             if (imageNodes.getLength() == 0) return false;
             Element imageEl = (Element) imageNodes.item(0);
             String imgSrc = imageEl.getAttribute("source");
-            // resolve relative path against the tileset file location
             File imgFile = new File(tilesetBaseFile.getParentFile(), imgSrc);
             tilesetImage = ImageIO.read(imgFile);
             tilesetColumns = tilesetImage.getWidth() / tilesetTileWidth;
@@ -148,8 +158,7 @@ public final class TileManager {
                 int[][] layer = new int[height][width];
 
                 if (encoding == null || encoding.isEmpty() || "csv".equalsIgnoreCase(encoding)) {
-                    // CSV data
-                    String[] tokens = dataText.split("[\r\n]+|,");
+                    String[] tokens = dataText.split("[\\r\\n]+|,");
                     int idx = 0;
                     for (int y = 0; y < height; y++) {
                         for (int x = 0; x < width; x++) {
@@ -160,13 +169,9 @@ public final class TileManager {
                         }
                     }
                 } else if ("base64".equalsIgnoreCase(encoding)) {
-                    // base64 (possibly uncompressed) -- Tiled writes little-endian 32-bit gids
                     String compressed = dataEl.getAttribute("compression");
-                    if (compressed != null && !compressed.isEmpty()) {
-                        // not supported
-                        return false;
-                    }
-                    String cleaned = dataText.replaceAll("\s+", "");
+                    if (compressed != null && !compressed.isEmpty()) return false;
+                    String cleaned = dataText.replaceAll("\\s+", "");
                     byte[] decoded = java.util.Base64.getDecoder().decode(cleaned);
                     java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(decoded).order(java.nio.ByteOrder.LITTLE_ENDIAN);
                     int total = width * height;
@@ -177,7 +182,6 @@ public final class TileManager {
                         layer[y][x] = gid;
                     }
                 } else {
-                    // unsupported encoding
                     return false;
                 }
 
@@ -185,7 +189,7 @@ public final class TileManager {
                 layerNames.add(lname != null ? lname : "");
             }
 
-            // read objectgroup for collisions (look for name containing 'collision')
+            // read objectgroup for collisions and spawns
             NodeList objGroups = doc.getElementsByTagName("objectgroup");
             for (int og = 0; og < objGroups.getLength(); og++) {
                 Element ogEl = (Element) objGroups.item(og);
@@ -203,32 +207,57 @@ public final class TileManager {
                         mapCollisions.add(r);
                     }
                 }
-                // also check for spawn objects in any objectgroup (common patterns: name or type contains "spawn")
+
+                // collect all objects as spawns
                 NodeList objectsAll = ogEl.getElementsByTagName("object");
                 for (int o = 0; o < objectsAll.getLength(); o++) {
                     Element obj = (Element) objectsAll.item(o);
                     String objName = obj.getAttribute("name");
                     String objType = obj.getAttribute("type");
+                    String objClass = obj.getAttribute("class");
                     if (objName == null) objName = "";
                     if (objType == null) objType = "";
-                    if (objName.toLowerCase().contains("spawn") || objType.toLowerCase().contains("spawn")) {
-                        try {
-                            float ox = Float.parseFloat(obj.getAttribute("x"));
-                            float oy = Float.parseFloat(obj.getAttribute("y"));
-                            spawnX = Math.round(ox);
-                            spawnY = Math.round(oy);
-                            hasSpawn = true;
-                        } catch (Exception ex) {
-                            // ignore malformed spawn object
+                    if (objClass == null) objClass = "";
+                    try {
+                        float ox = Float.parseFloat(obj.getAttribute("x"));
+                        float oy = Float.parseFloat(obj.getAttribute("y"));
+                        int pixX = Math.round(ox);
+                        int pixY = Math.round(oy);
+
+                        // read properties
+                        Map<String,String> props = new HashMap<>();
+                        NodeList propsNodes = obj.getElementsByTagName("properties");
+                        if (propsNodes.getLength() > 0) {
+                            Element propsEl = (Element) propsNodes.item(0);
+                            NodeList propList = propsEl.getElementsByTagName("property");
+                            for (int pi = 0; pi < propList.getLength(); pi++) {
+                                Element prop = (Element) propList.item(pi);
+                                String pn = prop.getAttribute("name");
+                                String pv = prop.getAttribute("value");
+                                if (pn != null && !pn.isEmpty()) props.put(pn, pv);
+                            }
                         }
+
+                        SpawnPoint sp = new SpawnPoint(objName, objType, objClass, pixX, pixY, props);
+                        spawnPoints.add(sp);
+
+                        if (!objName.trim().isEmpty()) namedSpawns.put(objName, new Point(pixX, pixY));
+                        if (!objClass.trim().isEmpty()) namedSpawns.put(objClass, new Point(pixX, pixY));
+
+                        if ((objName.toLowerCase().contains("spawn") || objType.toLowerCase().contains("spawn") || objClass.toLowerCase().contains("spawn")) && !hasSpawn) {
+                            spawnX = pixX;
+                            spawnY = pixY;
+                            hasSpawn = true;
+                        }
+                    } catch (NumberFormatException ex) {
+                        // ignore
                     }
                 }
             }
 
             return true;
         } catch (Exception e) {
-            // parsing/loading failed: return false so caller can fallback
-            e.printStackTrace();
+            System.err.println("TileManager.loadMap failed for: " + tmxPath + " -> " + e.getMessage());
             return false;
         }
     }
@@ -236,7 +265,6 @@ public final class TileManager {
     public void draw(Graphics g) {
         gp.entitiesCollision();
 
-        // If TMX map loaded, render layers from tileset
         if (tilesetImage != null && !layers.isEmpty()) {
             for (int li = 0; li < layers.size(); li++) {
                 int[][] layer = layers.get(li);
@@ -245,38 +273,20 @@ public final class TileManager {
                 for (int y = 0; y < height; y++) {
                     for (int x = 0; x < width; x++) {
                         int gid = layer[y][x];
-                        if (gid == 0) continue; // empty
+                        if (gid == 0) continue;
                         int localId = gid - tilesetFirstGid;
                         if (localId < 0) continue;
                         int sx = (localId % tilesetColumns) * tilesetTileWidth;
                         int sy = (localId / tilesetColumns) * tilesetTileHeight;
-                        // scale tile position and size by SCALE factor
                         int dx = (x * gp.tileSize * SCALE) - gp.mapX;
                         int dy = (y * gp.tileSize * SCALE) - gp.mapY;
                         int scaledSize = gp.tileSize * SCALE;
-                        // draw scaled to gp.tileSize * SCALE
                         g.drawImage(tilesetImage, dx, dy, dx + scaledSize, dy + scaledSize,
                             sx, sy, sx + tilesetTileWidth, sy + tilesetTileHeight, null);
                     }
                 }
             }
-
-            // apply collision rectangles from map (map pixel coords -> screen coords by subtracting mapX/Y)
-            // also scale collision rectangles by SCALE factor
-            for (int i = 0; i < mapCollisions.size(); i++) {
-                Rectangle r = mapCollisions.get(i);
-                int rx = (r.x * SCALE) - gp.mapX;
-                int ry = (r.y * SCALE) - gp.mapY;
-                int rw = r.width * SCALE;
-                int rh = r.height * SCALE;
-                // map first two collisions to gp fields if available
-                if (i == 0 && gp.borderCollision != null) gp.borderCollision.setBounds(rx, ry, rw, rh);
-                if (i == 1 && gp.tree1Collision != null) gp.tree1Collision.setBounds(rx, ry, rw, rh);
-                // draw debug rectangle
-                g.drawRect(rx, ry, rw, rh);
-            }
         } else {
-            // fallback: simple fill with fallbackGrass (or nothing) and recreate previous collision rects
             for (int row = 0; row < gp.tileRow; row++) {
                 for (int col = 0; col < gp.tileCol; col++) {
                     if (fallbackGrass != null) {
@@ -290,5 +300,24 @@ public final class TileManager {
 
     public List<Rectangle> getMapCollisions() {
         return mapCollisions;
+    }
+
+    public java.awt.Point getSpawnByName(String name) {
+        if (name == null) return null;
+        Point p = namedSpawns.get(name);
+        if (p != null) return p;
+        for (Map.Entry<String, Point> e : namedSpawns.entrySet()) {
+            if (e.getKey().equalsIgnoreCase(name)) return e.getValue();
+        }
+        String lower = name.toLowerCase();
+        for (Map.Entry<String, Point> e : namedSpawns.entrySet()) {
+            String key = e.getKey().toLowerCase();
+            if (key.contains(lower) || lower.contains(key)) return e.getValue();
+        }
+        return null;
+    }
+
+    public List<SpawnPoint> getSpawnPoints() {
+        return spawnPoints;
     }
 }

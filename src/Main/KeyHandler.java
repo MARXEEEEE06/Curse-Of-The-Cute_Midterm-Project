@@ -11,7 +11,7 @@ public class KeyHandler implements KeyListener {
     Timer gameTimer;
 
     public void startGameLoop() {
-        gameTimer = new Timer(20, _ -> update());
+        gameTimer = new Timer(15, _ -> update());
         gameTimer.start();
     }
 
