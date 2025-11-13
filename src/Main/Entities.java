@@ -109,7 +109,7 @@ public class Entities {
         }
     }
 
-    // Draw the NPC and the dialogue if active
+    // Draw the NPC (on the map) and the dialogue at the bottom in visual novel style
     public void draw(Graphics g) {
         int drawX = (npcMapX * TileManager.SCALE) - gp.mapX;
         int drawY = (npcMapY * TileManager.SCALE) - gp.mapY;
@@ -123,23 +123,82 @@ public class Entities {
             g.fillRect(drawX, drawY, drawWidth, drawHeight);
         }
 
+        // Visual novel style dialogue at the bottom
         if (showDialogue) {
-            FontMetrics fm = g.getFontMetrics();
-            int paddingX = 12;
-            int paddingY = 8;
-            int textW = fm.stringWidth(dialogText);
-            int textH = fm.getHeight();
-            int boxW = textW + paddingX * 2;
-            int boxH = textH + paddingY * 2;
-            int boxX = drawX - 30;
-            int boxY = drawY - boxH - 10;
-
-            g.setColor(new Color(0, 0, 0, 200));
-            g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-            g.setColor(Color.white);
-            g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-            g.drawString(dialogText, boxX + paddingX, boxY + paddingY + fm.getAscent());
+            drawDialogueBox(g);
         }
+    }
+
+    // Draw dialogue box at bottom with NPC sprite on left side
+    private void drawDialogueBox(Graphics g) {
+        int panelHeight = 140;
+        int panelX = 10;
+        int panelY = gp.gamePanelSizeY - panelHeight - 10;
+        int panelWidth = gp.gamePanelSizeX - 20;
+
+        // Draw semi-transparent background panel
+        g.setColor(new Color(0, 0, 0, 220));
+        g.fillRoundRect(panelX, panelY, panelWidth, panelHeight, 12, 12);
+
+        // Draw border
+        g.setColor(new Color(200, 150, 100));
+        if (g instanceof java.awt.Graphics2D) {
+            ((java.awt.Graphics2D) g).setStroke(new java.awt.BasicStroke(2));
+            ((java.awt.Graphics2D) g).drawRoundRect(panelX, panelY, panelWidth, panelHeight, 12, 12);
+        }
+
+        // Draw NPC sprite on left side (scaled up)
+        int spriteSize = 100;
+        int spriteX = panelX + 15;
+        int spriteY = panelY + (panelHeight - spriteSize) / 2;
+        if (npcImage != null) {
+            g.drawImage(npcImage, spriteX, spriteY, spriteSize, spriteSize, null);
+        }
+
+        // Draw dialogue text on the right side
+        int textX = spriteX + spriteSize + 20;
+        int textY = panelY + 20;
+        int textAreaWidth = panelWidth - spriteSize - 50;
+        
+        // Safety check to prevent crashes with very small text area
+        if (textAreaWidth < 50) {
+            textAreaWidth = 50;
+        }
+
+        g.setColor(Color.WHITE);
+        g.setFont(new java.awt.Font("Arial", java.awt.Font.PLAIN, 25));
+        FontMetrics fm = g.getFontMetrics();
+
+        // Word wrap the dialogue text
+        String[] words = dialogText.split(" ");
+        StringBuilder line = new StringBuilder();
+        int currentY = textY;
+        int lineHeight = fm.getHeight();
+        int maxLines = 3; // limit to 3 lines max
+        int lineCount = 0;
+
+        for (String word : words) {
+            if (lineCount >= maxLines) break; // don't exceed max lines
+            
+            if (fm.stringWidth(line.toString() + word) > textAreaWidth) {
+                if (line.length() > 0) {
+                    g.drawString(line.toString(), textX, currentY);
+                    currentY += lineHeight;
+                    lineCount++;
+                }
+                line = new StringBuilder(word + " ");
+            } else {
+                line.append(word).append(" ");
+            }
+        }
+        if (line.length() > 0 && lineCount < maxLines) {
+            g.drawString(line.toString(), textX, currentY);
+        }
+
+        // Draw click prompt at bottom
+        g.setColor(new Color(200, 200, 200));
+        g.setFont(new java.awt.Font("Arial", java.awt.Font.ITALIC, 10));
+        g.drawString("[Click to continue]", panelX + panelWidth - 155, panelY + panelHeight - 10);
     }
 
     // Return the NPC's screen rectangle (for clicking / collision checks)
@@ -164,17 +223,13 @@ public class Entities {
     public void onMouseClicked(int mouseX, int mouseY) {
         Rectangle npcRect = getScreenRect();
         if (showDialogue) {
-            FontMetrics fm = gp.getGraphics().getFontMetrics();
-            int paddingX = 12;
-            int paddingY = 8;
-            int textW = fm.stringWidth(dialogText);
-            int textH = fm.getHeight();
-            int boxW = textW + paddingX * 2;
-            int boxH = textH + paddingY * 2;
-            int boxX = npcRect.x - 30;
-            int boxY = npcRect.y - boxH - 10;
-            Rectangle box = new Rectangle(boxX, boxY, boxW, boxH);
-            if (box.contains(mouseX, mouseY)) {
+            // Dismiss dialogue when clicking anywhere on the dialogue box area
+            int panelHeight = 140;
+            int panelX = 10;
+            int panelY = gp.gamePanelSizeY - panelHeight - 10;
+            int panelWidth = gp.gamePanelSizeX - 20;
+            Rectangle dialogBox = new Rectangle(panelX, panelY, panelWidth, panelHeight);
+            if (dialogBox.contains(mouseX, mouseY)) {
                 showDialogue = false;
                 dialogueDismissed = true;
                 gp.repaint();

@@ -31,7 +31,7 @@ public class GamePanel extends JPanel {
     TileManager tiles = new TileManager(this);
     Entities entities = new Entities(this);
     // collisions
-    String playerDirection = "";
+    String playerDirection = "down";
     Collisions playerCollision = new Collisions(0, 0, tileSize/2, tileSize/2);
 
     public void entitiesCollision() {
