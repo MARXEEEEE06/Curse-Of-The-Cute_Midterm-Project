@@ -42,6 +42,34 @@ public class KeyHandler implements KeyListener {
         System.out.println("PlayerX: " + gp.playerX);
         System.out.println("PlayerY: " + gp.playerY);
 
+        // If 'M' pressed while in game, open main menu
+        if (code == KeyEvent.VK_M) {
+            if (gp.menu != null) gp.menu.showMenu();
+            return;
+        }
+
+        // If menu is showing, allow Enter/Space to start the game and block other keys
+        if (gp.menu != null && gp.menu.isShowing()) {
+            if (code == KeyEvent.VK_ENTER || code == KeyEvent.VK_SPACE) {
+                gp.menu.startGame();
+            }
+            return;
+        }
+
+        // Toggle combat with 'K' for testing
+        // Combat removed: K toggle and 1/2/3 skill routing removed
+
+        // Toggle inventory with E key
+        if (code == KeyEvent.VK_E) {
+            gp.inventory.toggleInventory();
+            return; // Don't process other keys while opening/closing inventory
+        }
+
+        // If inventory is open, don't process movement keys
+        if (gp.inventory.isOpen()) {
+            return;
+        }
+
         if (e.isShiftDown()){
             gp.setSpeed(10);
         }

@@ -16,6 +16,7 @@ public class Entities {
     private int npcMapY = 200; // map pixel Y
     private final int npcWidth = 32;
     private final int npcHeight = 32;
+    private boolean isEnemyNPC = false; // set to true for enemy encounters
     // animation frames for NPC Auran
     private final BufferedImage[] idleAnim = new BufferedImage[4];
     private int animIndex = 0;
@@ -217,6 +218,15 @@ public class Entities {
     public void setMapPosition(int mapX, int mapY) {
         this.npcMapX = mapX;
         this.npcMapY = mapY;
+    }
+
+    // allow external code to set this NPC as enemy (triggers combat on interaction)
+    public void setIsEnemyNPC(boolean isEnemy) {
+        this.isEnemyNPC = isEnemy;
+    }
+
+    public boolean getIsEnemyNPC() {
+        return isEnemyNPC;
     }
 
     // Called by GamePanel when the mouse is clicked on the panel

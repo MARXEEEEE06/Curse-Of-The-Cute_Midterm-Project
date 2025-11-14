@@ -6,8 +6,8 @@ import javax.swing.*;
 public class GamePanel extends JPanel {
     // map
     public final int tileSize = 32;
-    public final int gamePanelSizeX = 800;
-    public final int gamePanelSizeY = 600;
+    public int gamePanelSizeX = 800;
+    public int gamePanelSizeY = 600;
     public int mapX = 13*32;
     public int mapY = 13*32;
     @SuppressWarnings("unused")
@@ -17,7 +17,9 @@ public class GamePanel extends JPanel {
     PlayerStatus ps = new PlayerStatus(this);
     public int speed = 5;
     public int whatFrame = 0;
-    public final int frameSpeed = 3; // higher = slower animation
+    // Controls how many movement ticks occur before the sprite frame advances.
+    // Increase this value to make the walking animation slower.
+    public final int frameSpeed = 10; // higher = slower animation
     public int frameDelay = 0; // counts frames for delay
     public int playerX = 0;
     public int playerY = 0;
@@ -30,6 +32,10 @@ public class GamePanel extends JPanel {
     public int objectLayerGrid[][] = new int[tileRow][tileCol];
     TileManager tiles = new TileManager(this);
     Entities entities = new Entities(this);
+    EnemyNPC enemyNPC = new EnemyNPC(this);
+    Inventory inventory = new Inventory(this);
+    Menu menu = new Menu(this);
+    Combat combat = new Combat(this);
     // collisions
     String playerDirection = "down";
     Collisions playerCollision = new Collisions(0, 0, tileSize/2, tileSize/2);
@@ -74,14 +80,65 @@ public class GamePanel extends JPanel {
                 if (auranP == null) auranP = tiles.getSpawnByName("auranSpawn");
                 if (auranP != null) {
                     entities.setMapPosition(auranP.x, auranP.y);
+                    entities.setIsEnemyNPC(false); // Auran is friendly
+                }
+            }
+            
+            // 3) Enemy NPC spawn: place enemy at enemySpawn if exists
+            if (enemyNPC != null) {
+                java.awt.Point enemyP = tiles.getSpawnByName("enemy");
+                if (enemyP == null) enemyP = tiles.getSpawnByName("enemySpawn");
+                if (enemyP != null) {
+                    enemyNPC.setMapPosition(enemyP.x, enemyP.y);
                 }
             }
         }
-        // forward mouse clicks to entities for interaction
+        // forward mouse clicks to menu/combat/entities for interaction
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                entities.onMouseClicked(e.getX(), e.getY());
+                // Menu takes priority
+                if (menu != null && menu.isShowing()) {
+                    menu.onMouseClicked(e.getX(), e.getY());
+                    return;
+                }
+                // Check if clicking on enemy NPC should trigger combat (click-to-start, Pokémon style)
+                if (entities != null && entities.getIsEnemyNPC()) {
+                    Rectangle npcRect = entities.getScreenRect();
+                    if (npcRect.contains(e.getX(), e.getY())) {
+                        // Check if player is within proximity
+                        Rectangle playerRect = new Rectangle(playerX, playerY, ps.playerSizeW, ps.playerSizeH);
+                        double dx = (npcRect.getCenterX() - playerRect.getCenterX());
+                        double dy = (npcRect.getCenterY() - playerRect.getCenterY());
+                        double dist = Math.hypot(dx, dy);
+                        if (dist <= 160) {
+                            // Start combat when player clicks nearby enemy NPC
+                            if (combat != null && !combat.isActive()) {
+                                combat.startCombat();
+                                repaint();
+                            }
+                            return;
+                        }
+                    }
+                }
+                // Check if clicking on enemyNPC (separate enemy type) should trigger combat
+                if (enemyNPC != null) {
+                    Rectangle enemyRect = enemyNPC.getScreenRect();
+                    if (enemyRect.contains(e.getX(), e.getY())) {
+                        Rectangle playerRect = new Rectangle(playerX, playerY, ps.playerSizeW, ps.playerSizeH);
+                        double dx = (enemyRect.getCenterX() - playerRect.getCenterX());
+                        double dy = (enemyRect.getCenterY() - playerRect.getCenterY());
+                        double dist = Math.hypot(dx, dy);
+                        if (dist <= 160) {
+                            if (combat != null && !combat.isActive()) {
+                                combat.startCombat();
+                                repaint();
+                            }
+                            return;
+                        }
+                    }
+                }
+                if (entities != null) entities.onMouseClicked(e.getX(), e.getY());
             }
         });
         // update cursor when mouse moves over NPC
@@ -98,6 +155,8 @@ public class GamePanel extends JPanel {
     // character movement
     public void moveUp() {
         playerDirection = "up";
+        // Check for enemy NPC proximity/combat trigger before dialogue
+        checkEnemyProximity();
         // block movement / show dialogue if NPC interaction requires it
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
         
@@ -121,6 +180,8 @@ public class GamePanel extends JPanel {
 
     public void moveDown() {
         playerDirection = "down";
+        // Check for enemy NPC proximity/combat trigger
+        checkEnemyProximity();
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
         
         int newMapY = mapY + speed;
@@ -142,6 +203,8 @@ public class GamePanel extends JPanel {
 
     public void moveLeft() {
         playerDirection = "left";
+        // Check for enemy NPC proximity/combat trigger
+        checkEnemyProximity();
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
         
         int newMapX = mapX - speed;
@@ -163,6 +226,8 @@ public class GamePanel extends JPanel {
 
     public void moveRight() {
         playerDirection = "right";
+        // Check for enemy NPC proximity/combat trigger
+        checkEnemyProximity();
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
         
         int newMapX = mapX + speed;
@@ -222,6 +287,36 @@ public class GamePanel extends JPanel {
         this.speed = speed;
     }
 
+    /**
+     * Check if player is near an enemy NPC and auto-trigger combat
+     */
+    private void checkEnemyProximity() {
+        if (entities == null || !entities.getIsEnemyNPC()) {
+            // Check the new enemy NPC instead
+            if (enemyNPC != null) {
+                Rectangle enemyRect = enemyNPC.getScreenRect();
+                Rectangle playerRect = new Rectangle(playerX, playerY, ps.playerSizeW, ps.playerSizeH);
+                if (enemyRect.intersects(playerRect)) {
+                    // Auto-start combat if not already active
+                    if (combat != null && !combat.isActive()) {
+                        combat.startCombat();
+                        repaint(); // ensure combat UI shows immediately
+                    }
+                }
+            }
+            return;
+        }
+        Rectangle npcRect = entities.getScreenRect();
+        Rectangle playerRect = new Rectangle(playerX, playerY, ps.playerSizeW, ps.playerSizeH);
+        if (npcRect.intersects(playerRect)) {
+            // Auto-start combat if not already active
+            if (combat != null && !combat.isActive()) {
+                combat.startCombat();
+                repaint(); // ensure combat UI shows immediately
+            }
+        }
+    }
+
     // Clamp camera to map boundaries
     private void clampCamera() {
         int mapPixelWidth = tileCol * tileSize * TileManager.SCALE;
@@ -253,13 +348,32 @@ public class GamePanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        // If menu is showing, draw menu and skip game rendering
+        if (menu != null && menu.isShowing()) {
+            menu.draw(g);
+            return;
+        }
+        // If combat active, draw combat UI and skip normal gameplay rendering
+        if (combat != null && combat.isActive()) {
+            combat.draw(g);
+            return;
+        }
         tiles.draw(g);
         // update and draw entities (NPCs)
         if (entities != null) {
             entities.update();
             entities.draw(g);
         }
+        // draw enemy NPC
+        if (enemyNPC != null) {
+            Graphics2D g2 = (Graphics2D) g;
+            enemyNPC.draw(g2);
+        }
         ps.draw(g);
+        // Draw inventory UIe
+        if (inventory != null) {
+            inventory.draw(g);
+        }
         //gridLines
         //for (int x = 0; x < (tileRow * tileSize); x += tileSize) {
         //    g.setColor(Color.red); // Vertical lines
