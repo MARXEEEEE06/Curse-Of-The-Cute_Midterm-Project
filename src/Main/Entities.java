@@ -63,6 +63,12 @@ public class Entities {
      * Returns true if interaction should block movement.
      */
     public boolean checkNPCInteraction(int playerScreenX, int playerScreenY, int mapX, int mapY, PlayerStatus ps) {
+        // For friendly NPCs like Auran, dialogue only on click, not proximity
+        if (!isEnemyNPC) {
+            return false; // no blocking for friendly NPCs
+        }
+
+        // For enemy NPCs, trigger on proximity
         // Convert player screen position to world coordinates
         int playerWorldX = mapX + playerScreenX;
         int playerWorldY = mapY + playerScreenY;

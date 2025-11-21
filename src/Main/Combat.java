@@ -29,6 +29,9 @@ public class Combat {
     // Current animation
     private List<BufferedImage> currentFrames = null;
     private int currentFrameIndex = 0;
+    private int animationFrameDelay = 0;
+    private final int animationFrameSpeed = 10; // higher = slower animation
+    private boolean isAnimating = false;
     private BufferedImage enemyImage = null;
 
     public Combat(GamePanel gp) {
@@ -221,7 +224,6 @@ public class Combat {
         active = true;
         playerHP = playerMaxHP;
         enemyHP = enemyMaxHP;
-        autoPlayPreferredSkill();
         gp.repaint();
     }
 
@@ -267,6 +269,9 @@ public class Combat {
     public void endCombat() {
         active = false;
         currentFrames = null;
+        currentFrameIndex = 0;
+        animationFrameDelay = 0;
+        isAnimating = false;
         gp.repaint();
     }
 
@@ -348,25 +353,69 @@ public class Combat {
     }
 
     public void onSkillPressed(int id) {
-        if (!active) return;
+        if (!active || isAnimating) return;
         // Find any actor that has this skill
         for (Map<Integer, List<BufferedImage>> skills : frames.values()) {
             List<BufferedImage> f = skills.get(id);
             if (f != null && !f.isEmpty()) {
                 currentFrames = f;
                 currentFrameIndex = 0;
+                animationFrameDelay = 0;
+                isAnimating = true;
                 gp.repaint();
                 return;
             }
         }
     }
 
+    public void updateCursorOnHover(int mx, int my) {
+        if (!active) return;
+
+        int menuY = gp.gamePanelSizeY - 130;
+        int btnW = 140;
+        int btnH = 40;
+        int spacing = 20;
+        int startX = (gp.gamePanelSizeX - (btnW * 2 + spacing)) / 2;
+        int startY = menuY + 20;
+
+        // Check if mouse is over any button
+        boolean overButton = false;
+        // Skill 1
+        if (isClickInRect(mx, my, startX, startY, btnW, btnH)) overButton = true;
+        // Skill 2
+        else if (isClickInRect(mx, my, startX + btnW + spacing, startY, btnW, btnH)) overButton = true;
+        // Skill 3
+        else if (isClickInRect(mx, my, startX, startY + btnH + spacing, btnW, btnH)) overButton = true;
+        // Run
+        else if (isClickInRect(mx, my, startX + btnW + spacing, startY + btnH + spacing, btnW, btnH)) overButton = true;
+
+        if (overButton) {
+            gp.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        } else {
+            gp.setCursor(Cursor.getDefaultCursor());
+        }
+    }
+
+    public void update() {
+        if (!active || currentFrames == null || currentFrames.isEmpty()) return;
+
+        animationFrameDelay++;
+        if (animationFrameDelay >= animationFrameSpeed) {
+            currentFrameIndex = (currentFrameIndex + 1) % currentFrames.size();
+            if (currentFrameIndex == 0) {
+                isAnimating = false; // Stop animation after one full cycle
+            }
+            animationFrameDelay = 0;
+            gp.repaint();
+        }
+    }
+
     public void draw(Graphics g) {
         if (!active) return;
         Graphics2D g2 = (Graphics2D) g;
-        
+
         // Battle background
-        g2.setColor(new Color(20, 20, 40, 220));
+        g2.setColor(new Color(0, 0, 0, 0));
         g2.fillRect(0, 0, gp.gamePanelSizeX, gp.gamePanelSizeY);
 
         // Draw enemy
@@ -389,10 +438,16 @@ public class Combat {
 
         // Draw player skill animation
         if (currentFrames != null && !currentFrames.isEmpty()) {
-            BufferedImage img = currentFrames.get(Math.max(0, Math.min(currentFrames.size() - 1, currentFrameIndex)));
+            BufferedImage img = currentFrames.get(currentFrameIndex);
+            // Scale image to fit within game panel bounds
+            int maxWidth = gp.gamePanelSizeX / 4; // Max 1/4 of panel width
+            int maxHeight = gp.gamePanelSizeY / 3; // Max 1/3 of panel height
+            int scaledWidth = Math.min(img.getWidth(), maxWidth);
+            int scaledHeight = Math.min(img.getHeight(), maxHeight);
+
             int px = 40;
             int py = gp.gamePanelSizeY - 240;
-            g2.drawImage(img, px, py, null);
+            g2.drawImage(img, px, py, scaledWidth, scaledHeight, null);
         } else {
             // Placeholder player
             int px = 40;
@@ -408,27 +463,29 @@ public class Combat {
         int py = gp.gamePanelSizeY - 240;
         drawHPBar(g2, px, py + 130, 220, 16, playerHP, playerMaxHP, Color.GREEN);
 
-        // Battle menu
-        int menuY = gp.gamePanelSizeY - 130;
-        g2.setColor(new Color(30, 30, 60, 240));
-        g2.fillRect(0, menuY, gp.gamePanelSizeX, 130);
-        g2.setColor(new Color(200, 180, 100));
-        g2.setStroke(new BasicStroke(3));
-        g2.drawRect(0, menuY, gp.gamePanelSizeX, 130);
+        // Battle menu - only show if not animating
+        if (!isAnimating) {
+            int menuY = gp.gamePanelSizeY - 130;
+            g2.setColor(new Color(30, 30, 60, 240));
+            g2.fillRect(0, menuY, gp.gamePanelSizeX, 130);
+            g2.setColor(new Color(200, 180, 100));
+            g2.setStroke(new BasicStroke(3));
+            g2.drawRect(0, menuY, gp.gamePanelSizeX, 130);
 
-        int btnW = 140, btnH = 40, spacing = 20;
-        int startX = (gp.gamePanelSizeX - (btnW * 2 + spacing)) / 2;
-        int startY = menuY + 20;
+            int btnW = 140, btnH = 40, spacing = 20;
+            int startX = (gp.gamePanelSizeX - (btnW * 2 + spacing)) / 2;
+            int startY = menuY + 20;
 
-        drawMenuButton(g2, startX, startY, btnW, btnH, "Skill 1");
-        drawMenuButton(g2, startX + btnW + spacing, startY, btnW, btnH, "Skill 2");
-        drawMenuButton(g2, startX, startY + btnH + spacing, btnW, btnH, "Skill 3");
-        drawMenuButton(g2, startX + btnW + spacing, startY + btnH + spacing, btnW, btnH, "Run");
+            drawMenuButton(g2, startX, startY, btnW, btnH, "Skill 1");
+            drawMenuButton(g2, startX + btnW + spacing, startY, btnW, btnH, "Skill 2");
+            drawMenuButton(g2, startX, startY + btnH + spacing, btnW, btnH, "Skill 3");
+            drawMenuButton(g2, startX + btnW + spacing, startY + btnH + spacing, btnW, btnH, "Run");
 
-        // Prompt
-        g2.setColor(Color.WHITE);
-        g2.setFont(new Font("Arial", Font.PLAIN, 12));
-        g2.drawString("What will you do?", 20, menuY + 115);
+            // Prompt
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Arial", Font.PLAIN, 12));
+            g2.drawString("What will you do?", 20, menuY + 115);
+        }
     }
 
     private void drawMenuButton(Graphics2D g2, int x, int y, int w, int h, String label) {

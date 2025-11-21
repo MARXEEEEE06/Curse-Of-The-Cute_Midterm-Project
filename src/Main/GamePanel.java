@@ -4,6 +4,7 @@ import java.awt.image.*;
 import javax.swing.*;
 
 public class GamePanel extends JPanel {
+    private JFrame window;
     // map
     public final int tileSize = 32;
     public int gamePanelSizeX = 800;
@@ -23,6 +24,8 @@ public class GamePanel extends JPanel {
     public int frameDelay = 0; // counts frames for delay
     public int playerX = 0;
     public int playerY = 0;
+    public int playerWorldX = 0;
+    public int playerWorldY = 0;
     public int playerXCollision = playerX;
     public int playerYCollision = (playerY-tileSize);
     // tile
@@ -34,7 +37,7 @@ public class GamePanel extends JPanel {
     Entities entities = new Entities(this);
     EnemyNPC enemyNPC = new EnemyNPC(this);
     Inventory inventory = new Inventory(this);
-    Menu menu = new Menu(this);
+    Menu menu = new Menu(this, window);
     Combat combat = new Combat(this);
     // collisions
     String playerDirection = "down";
@@ -52,7 +55,8 @@ public class GamePanel extends JPanel {
         }
     }
 
-    public GamePanel() {
+    public GamePanel(JFrame window) {
+        this.window = window;
         loadSprites();
         KeyHandler keyH = new KeyHandler(this);
         this.setFocusable(true);
@@ -78,12 +82,11 @@ public class GamePanel extends JPanel {
             if (entities != null) {
                 java.awt.Point auranP = tiles.getSpawnByName("auran");
                 if (auranP == null) auranP = tiles.getSpawnByName("auranSpawn");
-                if (auranP != null) {
-                    entities.setMapPosition(auranP.x, auranP.y);
-                    entities.setIsEnemyNPC(false); // Auran is friendly
-                }
+                if (auranP == null) auranP = new java.awt.Point(141, 493); // fallback spawn
+                entities.setMapPosition(auranP.x, auranP.y);
+                entities.setIsEnemyNPC(false); // Auran is friendly
             }
-            
+
             // 3) Enemy NPC spawn: place enemy at enemySpawn if exists
             if (enemyNPC != null) {
                 java.awt.Point enemyP = tiles.getSpawnByName("enemy");
@@ -93,6 +96,9 @@ public class GamePanel extends JPanel {
                 }
             }
         }
+        // Set initial world position
+        playerWorldX = mapX + playerX;
+        playerWorldY = mapY + playerY;
         // forward mouse clicks to menu/combat/entities for interaction
         this.addMouseListener(new MouseAdapter() {
             @Override
@@ -100,6 +106,11 @@ public class GamePanel extends JPanel {
                 // Menu takes priority
                 if (menu != null && menu.isShowing()) {
                     menu.onMouseClicked(e.getX(), e.getY());
+                    return;
+                }
+                // Combat takes priority if active
+                if (combat != null && combat.isActive()) {
+                    combat.onMouseClicked(e.getX(), e.getY());
                     return;
                 }
                 // Check if clicking on enemy NPC should trigger combat (click-to-start, Pokémon style)
@@ -141,15 +152,23 @@ public class GamePanel extends JPanel {
                 if (entities != null) entities.onMouseClicked(e.getX(), e.getY());
             }
         });
-        // update cursor when mouse moves over NPC
+        // update cursor when mouse moves over NPC or combat buttons
         this.addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
+                // Menu takes priority if showing
+                if (menu != null && menu.isShowing()) {
+                    menu.onMouseMoved(e.getX(), e.getY());
+                    return;
+                }
+                // Combat takes priority if active
+                if (combat != null && combat.isActive()) {
+                    combat.updateCursorOnHover(e.getX(), e.getY());
+                    return;
+                }
                 entities.updateCursorOnHover(e.getX(), e.getY());
             }
         });
-        // ensure camera doesn't start outside bounds
-        clampCamera();
     };
 
     // character movement
@@ -159,15 +178,30 @@ public class GamePanel extends JPanel {
         checkEnemyProximity();
         // block movement / show dialogue if NPC interaction requires it
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
-        
-        // Check collision with the new position (move camera up = scroll map up)
+
+        int centerY = (gamePanelSizeY - ps.playerSizeH) / 2;
+        int mapPixelHeight = tiles.getMapHeight() * tileSize * TileManager.SCALE;
         int newMapY = mapY - speed;
-        boolean colliding = checkCollisionAtMapPosition(newMapY, mapX);
-        
-        if (!colliding) {
-            mapY = newMapY;
+        boolean canMoveCamera = (newMapY >= 0 && newMapY <= mapPixelHeight - gamePanelSizeY);
+
+        if (canMoveCamera && playerY == centerY) {
+            boolean colliding = checkCollisionAtMapPosition(newMapY, mapX, playerX, playerY);
+            if (!colliding) {
+                mapY = newMapY;
+                playerWorldY = mapY + playerY;
+            }
+        } else {
+            int newPlayerWorldY = playerWorldY - speed;
+            int newPlayerY = playerY - speed;
+            if (newPlayerWorldY >= 0) {
+                boolean colliding = checkCollisionAtMapPosition(mapY, mapX, playerX, newPlayerY);
+                if (!colliding) {
+                    playerY = newPlayerY;
+                    playerWorldY = newPlayerWorldY;
+                }
+            }
         }
-        
+
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
@@ -183,12 +217,28 @@ public class GamePanel extends JPanel {
         // Check for enemy NPC proximity/combat trigger
         checkEnemyProximity();
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
-        
+
+        int centerY = (gamePanelSizeY - ps.playerSizeH) / 2;
+        int mapPixelHeight = tiles.getMapHeight() * tileSize * TileManager.SCALE;
         int newMapY = mapY + speed;
-        boolean colliding = checkCollisionAtMapPosition(newMapY, mapX);
-        
-        if (!colliding) {
-            mapY = newMapY;
+        boolean canMoveCamera = (newMapY >= 0 && newMapY <= mapPixelHeight - gamePanelSizeY);
+
+        if (canMoveCamera && playerY == centerY) {
+            boolean colliding = checkCollisionAtMapPosition(newMapY, mapX, playerX, playerY);
+            if (!colliding) {
+                mapY = newMapY;
+                playerWorldY = mapY + playerY;
+            }
+        } else {
+            int newPlayerWorldY = playerWorldY + speed;
+            int newPlayerY = playerY + speed;
+            if (newPlayerWorldY <= mapPixelHeight - ps.playerSizeH) {
+                boolean colliding = checkCollisionAtMapPosition(mapY, mapX, playerX, newPlayerY);
+                if (!colliding) {
+                    playerY = newPlayerY;
+                    playerWorldY = newPlayerWorldY;
+                }
+            }
         }
 
         frameDelay++;
@@ -206,14 +256,30 @@ public class GamePanel extends JPanel {
         // Check for enemy NPC proximity/combat trigger
         checkEnemyProximity();
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
-        
+
+        int centerX = (gamePanelSizeX - ps.playerSizeW) / 2;
+        int mapPixelWidth = tiles.getMapWidth() * tileSize * TileManager.SCALE;
         int newMapX = mapX - speed;
-        boolean colliding = checkCollisionAtMapPosition(mapY, newMapX);
-        
-        if (!colliding) {
-            mapX = newMapX;
+        boolean canMoveCamera = (newMapX >= 0 && newMapX <= mapPixelWidth - gamePanelSizeX);
+
+        if (canMoveCamera && playerX == centerX) {
+            boolean colliding = checkCollisionAtMapPosition(mapY, newMapX, playerX, playerY);
+            if (!colliding) {
+                mapX = newMapX;
+                playerWorldX = mapX + playerX;
+            }
+        } else {
+            int newPlayerWorldX = playerWorldX - speed;
+            int newPlayerX = playerX - speed;
+            if (newPlayerWorldX >= 0 && newPlayerWorldX <= mapPixelWidth - ps.playerSizeW) {
+                boolean colliding = checkCollisionAtMapPosition(mapY, mapX, newPlayerX, playerY);
+                if (!colliding) {
+                    playerX = newPlayerX;
+                    playerWorldX = newPlayerWorldX;
+                }
+            }
         }
-        
+
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
@@ -229,14 +295,30 @@ public class GamePanel extends JPanel {
         // Check for enemy NPC proximity/combat trigger
         checkEnemyProximity();
         if (entities != null && entities.checkNPCInteraction(playerX, playerY, mapX, mapY, ps)) return;
-        
+
+        int centerX = (gamePanelSizeX - ps.playerSizeW) / 2;
+        int mapPixelWidth = tiles.getMapWidth() * tileSize * TileManager.SCALE;
         int newMapX = mapX + speed;
-        boolean colliding = checkCollisionAtMapPosition(mapY, newMapX);
-        
-        if (!colliding) {
-            mapX = newMapX;
+        boolean canMoveCamera = (newMapX >= 0 && newMapX <= mapPixelWidth - gamePanelSizeX);
+
+        if (canMoveCamera && playerX == centerX) {
+            boolean colliding = checkCollisionAtMapPosition(mapY, newMapX, playerX, playerY);
+            if (!colliding) {
+                mapX = newMapX;
+                playerWorldX = mapX + playerX;
+            }
+        } else {
+            int newPlayerWorldX = playerWorldX + speed;
+            int newPlayerX = playerX + speed;
+            if (newPlayerWorldX <= mapPixelWidth - ps.playerSizeW) {
+                boolean colliding = checkCollisionAtMapPosition(mapY, mapX, newPlayerX, playerY);
+                if (!colliding) {
+                    playerX = newPlayerX;
+                    playerWorldX = newPlayerWorldX;
+                }
+            }
         }
-        
+
         frameDelay++;
         if (frameDelay >= frameSpeed) {
             whatFrame = (whatFrame + 1) % 4;
@@ -248,13 +330,13 @@ public class GamePanel extends JPanel {
     }
 
     /**
-     * Check if the player collides with any map obstacles at the given camera position.
-     * Uses the player's full bounding box (playerX, playerY, playerSizeW, playerSizeH) for pixel-perfect collision.
+     * Check if the player collides with any map obstacles at the given camera position and player position.
+     * Uses the player's full bounding box (checkPlayerX, checkPlayerY, playerSizeW, playerSizeH) for pixel-perfect collision.
      */
-    private boolean checkCollisionAtMapPosition(int checkMapY, int checkMapX) {
+    private boolean checkCollisionAtMapPosition(int checkMapY, int checkMapX, int checkPlayerX, int checkPlayerY) {
         // Player's bounding box in screen coordinates
-        Rectangle playerScreenRect = new Rectangle(playerX, playerY, ps.playerSizeW, ps.playerSizeH);
-        
+        Rectangle playerScreenRect = new Rectangle(checkPlayerX, checkPlayerY, ps.playerSizeW, ps.playerSizeH);
+
         for (Rectangle mapCollision : tiles.getMapCollisions()) {
             // Convert map collision to screen coordinates using the test camera position
             Rectangle screenCollision = new Rectangle(
@@ -319,8 +401,8 @@ public class GamePanel extends JPanel {
 
     // Clamp camera to map boundaries
     private void clampCamera() {
-        int mapPixelWidth = tileCol * tileSize * TileManager.SCALE;
-        int mapPixelHeight = tileRow * tileSize * TileManager.SCALE;
+        int mapPixelWidth = tiles.getMapWidth() * tileSize * TileManager.SCALE;
+        int mapPixelHeight = tiles.getMapHeight() * tileSize * TileManager.SCALE;
 
         if (mapX < 0) mapX = 0;
         else if (mapX + gamePanelSizeX > mapPixelWidth) mapX = Math.max(0, mapPixelWidth - gamePanelSizeX);
@@ -338,8 +420,8 @@ public class GamePanel extends JPanel {
         try {
             System.out.println("Map Width: " + tileCol * tileSize);
             System.out.println("Map Height: " + tileRow * tileSize);
-            System.out.println("MapX: " + mapX);
-            System.out.println("MapY: " + mapY);
+            System.out.println("playerWorldX: " + playerWorldX);
+            System.out.println("playerWorldY: " + playerWorldY);
         } catch (Exception e) {
             e.printStackTrace();
         }

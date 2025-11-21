@@ -320,4 +320,14 @@ public final class TileManager {
     public List<SpawnPoint> getSpawnPoints() {
         return spawnPoints;
     }
+
+    public int getMapWidth() {
+        if (layers.isEmpty()) return 50; // fallback
+        return layers.get(0)[0].length;
+    }
+
+    public int getMapHeight() {
+        if (layers.isEmpty()) return 50;
+        return layers.get(0).length;
+    }
 }

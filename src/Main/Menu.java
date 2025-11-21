@@ -3,19 +3,40 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
-import javax.swing.Timer;
+import javax.swing.*;
 
 public class Menu {
     private final GamePanel gp;
+    private final JFrame window;
     private final ArrayList<BufferedImage> frames = new ArrayList<>();
     private int frameIndex = 0;
     private Timer animTimer;
     private boolean showing = true;
+    private Rectangle startButton;
+    private Rectangle quitButton;
 
-    public Menu(GamePanel gp) {
+    public Menu(GamePanel gp, JFrame window) {
         this.gp = gp;
+        this.window = window;
         loadFrames();
         startAnimation();
+        // Define button positions based on sprite positions, offset by image centering
+        if (!frames.isEmpty()) {
+            BufferedImage img = frames.get(0);
+            int imgW = img.getWidth();
+            int imgH = img.getHeight();
+            int offsetX = (gp.gamePanelSizeX - imgW) / 2;
+            int offsetY = (gp.gamePanelSizeY - imgH) / 2;
+            startButton = new Rectangle(offsetX + 303, offsetY + 312, 180, 49);
+            quitButton = new Rectangle(offsetX + 303, offsetY + 512, 180, 49);
+        } else {
+            // Fallback positions
+            int buttonWidth = 200;
+            int buttonHeight = 50;
+            int buttonY = gp.gamePanelSizeY - 100;
+            startButton = new Rectangle(100, buttonY, buttonWidth, buttonHeight);
+            quitButton = new Rectangle(gp.gamePanelSizeX - 300, buttonY, buttonWidth, buttonHeight);
+        }
     }
 
     private void loadFrames() {
@@ -65,8 +86,19 @@ public class Menu {
     }
 
     public void onMouseClicked(int x, int y) {
-        // any click starts the game
-        startGame();
+        if (startButton.contains(x, y)) {
+            startGame();
+        } else if (quitButton.contains(x, y)) {
+            System.exit(0);
+        }
+    }
+
+    public void onMouseMoved(int x, int y) {
+        if (startButton.contains(x, y) || quitButton.contains(x, y)) {
+            gp.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        } else {
+            gp.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        }
     }
 
     public void draw(Graphics g) {
@@ -79,13 +111,6 @@ public class Menu {
             int x = (gp.gamePanelSizeX - img.getWidth()) / 2;
             int y = (gp.gamePanelSizeY - img.getHeight()) / 2;
             g2.drawImage(img, x, y, null);
-
-            // draw hint
-            g2.setColor(Color.WHITE);
-            g2.setFont(new Font("Arial", Font.ITALIC, 14));
-            String hint = "Press Enter or Click to Start";
-            int hintW = g2.getFontMetrics().stringWidth(hint);
-            g2.drawString(hint, (gp.gamePanelSizeX - hintW) / 2, y + img.getHeight() + 30);
         } else {
             // fallback menu
             g2.setColor(new Color(25, 25, 25));
@@ -95,10 +120,25 @@ public class Menu {
             String title = "Curse of the Cute";
             int tw = g2.getFontMetrics().stringWidth(title);
             g2.drawString(title, (gp.gamePanelSizeX - tw) / 2, gp.gamePanelSizeY / 2 - 20);
-            g2.setFont(new Font("Arial", Font.PLAIN, 18));
-            String hint = "Press Enter or Click to Start";
-            int hw = g2.getFontMetrics().stringWidth(hint);
-            g2.drawString(hint, (gp.gamePanelSizeX - hw) / 2, gp.gamePanelSizeY / 2 + 20);
+
+            // Draw Start button in fallback
+            g2.setColor(Color.GREEN);
+            g2.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
+            g2.setColor(Color.BLACK);
+            g2.setFont(new Font("Arial", Font.BOLD, 16));
+            String startText = "Start";
+            int startTextW = g2.getFontMetrics().stringWidth(startText);
+            int startTextH = g2.getFontMetrics().getAscent();
+            g2.drawString(startText, startButton.x + (startButton.width - startTextW) / 2, startButton.y + (startButton.height + startTextH) / 2);
+
+            // Draw Quit button in fallback
+            g2.setColor(Color.RED);
+            g2.fillRect(quitButton.x, quitButton.y, quitButton.width, quitButton.height);
+            g2.setColor(Color.BLACK);
+            String quitText = "Quit";
+            int quitTextW = g2.getFontMetrics().stringWidth(quitText);
+            int quitTextH = g2.getFontMetrics().getAscent();
+            g2.drawString(quitText, quitButton.x + (quitButton.width - quitTextW) / 2, quitButton.y + (quitButton.height + quitTextH) / 2);
         }
     }
 }

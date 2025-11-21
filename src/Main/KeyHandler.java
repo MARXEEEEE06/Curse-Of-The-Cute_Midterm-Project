@@ -20,6 +20,11 @@ public class KeyHandler implements KeyListener {
     }
 
     public void update() {
+        // Update combat animations if active
+        if (gp.combat != null) {
+            gp.combat.update();
+        }
+
         if (upIsPressed)
             gp.moveUp();
         else if (downIsPressed)
@@ -57,7 +62,29 @@ public class KeyHandler implements KeyListener {
         }
 
         // Toggle combat with 'K' for testing
-        // Combat removed: K toggle and 1/2/3 skill routing removed
+        if (code == KeyEvent.VK_K) {
+            if (gp.combat != null) {
+                if (gp.combat.isActive()) {
+                    gp.combat.endCombat();
+                } else {
+                    gp.combat.startCombat();
+                }
+                gp.repaint();
+            }
+            return;
+        }
+
+        // Use skills during combat with 1,2,3 keys
+        if (gp.combat != null && gp.combat.isActive()) {
+            switch (code) {
+                case KeyEvent.VK_1 -> gp.combat.onSkillPressed(1);
+                case KeyEvent.VK_2 -> gp.combat.onSkillPressed(2);
+                case KeyEvent.VK_3 -> gp.combat.onSkillPressed(3);
+                default -> {
+                }
+            }
+            return;
+        }
 
         // Toggle inventory with E key
         if (code == KeyEvent.VK_E) {
